@@ -356,13 +356,15 @@ fn markdown_to_search_text(markdown: &str) -> String {
         match event {
             Event::Text(value)
             | Event::Code(value)
+            | Event::InlineMath(value)
+            | Event::DisplayMath(value)
             | Event::Html(value)
             | Event::InlineHtml(value) => text.push_str(&value),
             Event::SoftBreak | Event::HardBreak | Event::Rule => text.push(' '),
             Event::End(
                 TagEnd::Paragraph
                 | TagEnd::Heading(_)
-                | TagEnd::BlockQuote
+                | TagEnd::BlockQuote(_)
                 | TagEnd::CodeBlock
                 | TagEnd::List(_)
                 | TagEnd::Item
@@ -376,9 +378,14 @@ fn markdown_to_search_text(markdown: &str) -> String {
                 TagEnd::Emphasis
                 | TagEnd::Strong
                 | TagEnd::Strikethrough
+                | TagEnd::Superscript
+                | TagEnd::Subscript
                 | TagEnd::Link
                 | TagEnd::HtmlBlock
                 | TagEnd::FootnoteDefinition
+                | TagEnd::DefinitionList
+                | TagEnd::DefinitionListTitle
+                | TagEnd::DefinitionListDefinition
                 | TagEnd::Image
                 | TagEnd::MetadataBlock(_),
             )

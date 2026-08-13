@@ -142,6 +142,29 @@ fn growing_single_top_level_blocks_render_and_scan_in_one_pass() {
 }
 
 #[test]
+fn streamed_math_matches_full_render_as_delimiters_arrive() {
+    let chunks = [
+        "Energy $E = ",
+        "mc^2$.\n\n",
+        "$$\\frac{-b \\pm ",
+        "\\sqrt{b^2 - 4ac}}{2a}",
+        "$$\n",
+    ];
+    let (_, render) = assert_rich_stream_matches_full_render(&chunks, Some(80));
+    assert_eq!(
+        lines_to_plain_strings(&render.lines),
+        vec![
+            "Energy E = mc².",
+            "",
+            "       ────────",
+            " -b ± √b² - 4ac",
+            "────────────────",
+            "       2a",
+        ]
+    );
+}
+
+#[test]
 fn incremental_raw_render_preserves_blank_lines() {
     let cwd = test_cwd();
     let width = Some(80);

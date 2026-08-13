@@ -265,6 +265,12 @@ enum TableColumnKind {
     Compact,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MathKind {
+    Inline,
+    Display,
+}
+
 /// Per-column statistics used to drive the width-allocation algorithm.
 ///
 /// Collected in a single pass over the header and body rows before any
@@ -344,6 +350,7 @@ pub(crate) fn render_markdown_lines_with_width_cwd_and_hidden_link_destinations(
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_MATH);
     let parser = DecodedTextMerge::new(Parser::new_ext(input, options).into_offset_iter());
     let mut w = Writer::new(input, parser, width, cwd, is_hidden_link_destination);
     w.run();
@@ -476,6 +483,14 @@ where
             Event::End(tag) => self.end_tag(tag),
             Event::Text(text) => self.text(text),
             Event::Code(code) => self.code(code),
+            Event::InlineMath(latex) => {
+                let source = self.input.get(range).unwrap_or(&latex).to_string();
+                self.math(latex, source, MathKind::Inline);
+            }
+            Event::DisplayMath(latex) => {
+                let source = self.input.get(range).unwrap_or(&latex).to_string();
+                self.math(latex, source, MathKind::Display);
+            }
             Event::SoftBreak => self.soft_break(),
             Event::HardBreak => self.hard_break(),
             Event::Rule => {
@@ -514,7 +529,7 @@ where
         match tag {
             Tag::Paragraph => self.start_paragraph(),
             Tag::Heading { level, .. } => self.start_heading(level),
-            Tag::BlockQuote => self.start_blockquote(),
+            Tag::BlockQuote(_) => self.start_blockquote(),
             Tag::CodeBlock(kind) => {
                 let indent = match kind {
                     CodeBlockKind::Fenced(_) => None,
@@ -538,6 +553,11 @@ where
             Tag::TableCell => self.start_table_cell(),
             Tag::HtmlBlock
             | Tag::FootnoteDefinition(_)
+            | Tag::DefinitionList
+            | Tag::DefinitionListTitle
+            | Tag::DefinitionListDefinition
+            | Tag::Superscript
+            | Tag::Subscript
             | Tag::Image { .. }
             | Tag::MetadataBlock(_) => {}
         }
@@ -547,7 +567,7 @@ where
         match tag {
             TagEnd::Paragraph => self.end_paragraph(),
             TagEnd::Heading(_) => self.end_heading(),
-            TagEnd::BlockQuote => self.end_blockquote(),
+            TagEnd::BlockQuote(_) => self.end_blockquote(),
             TagEnd::CodeBlock => self.end_codeblock(),
             TagEnd::List(_) => self.end_list(),
             TagEnd::Item => {
@@ -569,6 +589,11 @@ where
             TagEnd::TableCell => self.end_table_cell(),
             TagEnd::HtmlBlock
             | TagEnd::FootnoteDefinition
+            | TagEnd::DefinitionList
+            | TagEnd::DefinitionListTitle
+            | TagEnd::DefinitionListDefinition
+            | TagEnd::Superscript
+            | TagEnd::Subscript
             | TagEnd::Image
             | TagEnd::MetadataBlock(_) => {}
         }
@@ -718,6 +743,62 @@ where
         }
         let span = Span::from(code.into_string()).style(self.styles.code);
         self.push_span(span);
+    }
+
+    fn math(&mut self, latex: CowStr<'a>, source: String, kind: MathKind) {
+        if self.suppressing_local_link_label() {
+            return;
+        }
+        self.line_ends_with_local_link_target = false;
+        let style = self.inline_styles.last().copied().unwrap_or_default();
+        match kind {
+            MathKind::Inline => {
+                let rendered = crate::math_render::render_inline_math(&latex, self.wrap_width)
+                    .unwrap_or(source);
+                if self.in_table_cell() {
+                    self.push_span_to_table_cell(Span::styled(rendered, style));
+                } else {
+                    self.push_span(Span::styled(rendered, style));
+                }
+            }
+            MathKind::Display => {
+                let Some(rendered) =
+                    crate::math_render::render_display_math(&latex, self.wrap_width)
+                else {
+                    if self.in_table_cell() {
+                        self.push_span_to_table_cell(Span::styled(source, style));
+                    } else {
+                        self.push_span(Span::styled(source, style));
+                    }
+                    return;
+                };
+                if self.in_table_cell() {
+                    for (index, line) in rendered.into_iter().enumerate() {
+                        if index > 0 {
+                            self.push_table_cell_hard_break();
+                        }
+                        self.push_span_to_table_cell(Span::styled(line, style));
+                    }
+                    return;
+                }
+
+                let current_line_has_content = self
+                    .current_line_content
+                    .as_ref()
+                    .is_some_and(|line| !line.line.spans.is_empty());
+                if current_line_has_content {
+                    self.flush_current_line();
+                }
+                for (index, line) in rendered.into_iter().enumerate() {
+                    if index == 0 && self.current_line_content.is_some() {
+                        self.push_span(Span::styled(line, style));
+                    } else {
+                        self.push_line(Line::from(Span::styled(line, style)));
+                    }
+                }
+                self.needs_newline = true;
+            }
+        }
     }
 
     fn html(&mut self, html: CowStr<'a>, inline: bool) {

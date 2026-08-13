@@ -1,0 +1,20 @@
+---
+source: tui/src/markdown_render_tests.rs
+assertion_line: 1330
+expression: "plain_lines(&text).join(\"\\n\")"
+---
+Inline energy: E = mc² and α + β ≤ γ.
+
+       ────────
+ -b ± √b² - 4ac
+────────────────
+       2a
+
+               2π
+           -j ────kn
+N - 1          N
+  ∑   xₙ ·e
+n = 0
+
+⎡1  2⎤
+⎣3  4⎦

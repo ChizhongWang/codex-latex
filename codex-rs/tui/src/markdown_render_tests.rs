@@ -1318,6 +1318,51 @@ fn mixed_url_markdown_wraps_prose_without_splitting_words_snapshot() {
 }
 
 #[test]
+fn markdown_math_rendering_snapshot() {
+    let md = r#"Inline energy: $E = mc^2$ and $\alpha + \beta \leq \gamma$.
+
+$$\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$
+
+$$\sum_{n=0}^{N-1} x_n \cdot e^{-j \frac{2\pi}{N}kn}$$
+
+$$\begin{bmatrix}1 & 2 \\ 3 & 4\end{bmatrix}$$"#;
+    let text = render_markdown_text_with_width(md, Some(/*width*/ 80));
+    assert_snapshot!(plain_lines(&text).join("\n"));
+}
+
+#[test]
+fn multiline_inline_math_and_narrow_display_math_keep_source_fallback() {
+    let md = "Inline $\\frac{a}{b}$\n\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$";
+    let text = render_markdown_text_with_width(md, Some(/*width*/ 8));
+    assert_eq!(
+        plain_lines(&text),
+        vec![
+            "Inline $",
+            "\\frac{a}",
+            "{b}$",
+            "",
+            "$$",
+            "\\frac{-b",
+            "\\pm",
+            "\\sqrt{b^",
+            "2 -",
+            "4ac}}",
+            "{2a}$$",
+        ]
+    );
+}
+
+#[test]
+fn code_spans_and_fences_keep_math_delimiters_literal() {
+    let md = "`$x^2$`\n\n```text\n$$\\frac{a}{b}$$\n```";
+    let text = render_markdown_text(md);
+    assert_eq!(
+        plain_lines(&text),
+        vec!["$x^2$", "", "$$\\frac{a}{b}$$"]
+    );
+}
+
+#[test]
 fn markdown_render_complex_snapshot() {
     let md = r#"# H1: Markdown Streaming Test
 Intro paragraph with bold **text**, italic *text*, and inline code `x=1`.
