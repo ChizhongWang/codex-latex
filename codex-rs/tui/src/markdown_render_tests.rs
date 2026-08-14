@@ -1344,6 +1344,14 @@ fn latex_delimiter_math_rendering_snapshot() {
 
 \[
 f(x)=\operatorname{ReLU}(xW_1+b_1)W_2+b_2
+\]
+
+\[
+\operatorname{rank}(W')\leq\min\bigl(\operatorname{rank}(W_1),\operatorname{rank}(W_2)\bigr)\leq H
+\]
+
+\[
+\boxed{\text{能表示什么函数？ }}
 \]"#;
     let text = render_markdown_text_with_width(md, Some(/*width*/ 80));
     assert_snapshot!(plain_lines(&text).join("\n"));

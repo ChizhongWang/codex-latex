@@ -32,6 +32,29 @@ fn renders_operatorname_with_terminal_compatible_upright_text() {
 }
 
 #[test]
+fn renders_sized_delimiters_in_rank_bound() {
+    assert_eq!(
+        render_display_math(
+            r"\operatorname{rank}(W') \leq \min\bigl(\operatorname{rank}(W_1), \operatorname{rank}(W_2)\bigr) \leq H",
+            Some(80)
+        ),
+        Some(vec!["rank(W') ≤ min(rank(W₁), rank(W₂)) ≤ H".to_string()])
+    );
+}
+
+#[test]
+fn renders_outer_box_around_text() {
+    assert_eq!(
+        render_display_math(r"\boxed{\text{能表示什么函数？ }}", Some(80)),
+        Some(vec![
+            "┌─────────────────┐".to_string(),
+            "│能表示什么函数？ │".to_string(),
+            "└─────────────────┘".to_string(),
+        ])
+    );
+}
+
+#[test]
 fn normalizes_only_complete_latex_command_names() {
     assert_eq!(render_display_math(r"\bmatrix", Some(80)), None);
 }
@@ -40,9 +63,9 @@ fn normalizes_only_complete_latex_command_names() {
 fn normalizes_common_unsupported_presentation_commands() {
     assert_eq!(
         normalize_for_terminal(
-            r"\displaystyle \operatorname*{argmax}\limits_x \dfrac{a}{b} + \boldsymbol{v}"
+            r"\displaystyle \operatorname*{argmax}\limits_x \dfrac{a}{b} + \boldsymbol{v} + \Bigl(x\Bigr)"
         ),
-        r" \mathrm{argmax}_x \frac{a}{b} + \mathbf{v}"
+        r" \mathrm{argmax}_x \frac{a}{b} + \mathbf{v} + (x)"
     );
 }
 

@@ -34,11 +34,15 @@ fn render_bounded(latex: &str, max_width: Option<usize>) -> Option<term_maths::R
     if latex.is_empty() || latex.len() > MAX_LATEX_BYTES {
         return None;
     }
+    let (latex, draw_box) = strip_outer_box(latex).map_or((latex, false), |inner| (inner, true));
     let latex = normalize_for_terminal(latex);
     if latex.len() > MAX_LATEX_BYTES {
         return None;
     }
-    let block = catch_unwind(AssertUnwindSafe(|| term_maths::render(&latex))).ok()?;
+    let mut block = catch_unwind(AssertUnwindSafe(|| term_maths::render(&latex))).ok()?;
+    if draw_box {
+        block = add_terminal_box(&block);
+    }
     let rendered = block.to_string();
     if block.is_empty()
         || block.height() > MAX_RENDERED_HEIGHT
@@ -80,6 +84,12 @@ fn normalize_for_terminal(latex: &str) -> Cow<'_, str> {
             "dfrac" | "tfrac" => Some(r"\frac"),
             "boldsymbol" | "bm" => Some(r"\mathbf"),
             "textrm" | "textnormal" => Some(r"\mathrm"),
+            "textbf" | "textit" | "texttt" | "emph" => Some(r"\text"),
+            "boxed" => Some(""),
+            "big" | "bigl" | "bigr" | "bigm" | "Big" | "Bigl" | "Bigr" | "Bigm" | "bigg"
+            | "biggl" | "biggr" | "biggm" | "Bigg" | "Biggl" | "Biggr" | "Biggm" | "middle" => {
+                Some("")
+            }
             "displaystyle" | "textstyle" | "scriptstyle" | "scriptscriptstyle" | "limits"
             | "nolimits" => Some(""),
             _ => None,
@@ -101,6 +111,61 @@ fn normalize_for_terminal(latex: &str) -> Cow<'_, str> {
         normalized.push_str(&latex[copied_until..]);
         Cow::Owned(normalized)
     }
+}
+
+fn strip_outer_box(latex: &str) -> Option<&str> {
+    const PREFIX: &str = r"\boxed{";
+    let trimmed = latex.trim();
+    let rest = trimmed.strip_prefix(PREFIX)?;
+    let mut depth = 1_usize;
+    let mut escaped = false;
+
+    for (offset, character) in rest.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match character {
+            '\\' => escaped = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return rest[offset + character.len_utf8()..]
+                        .trim()
+                        .is_empty()
+                        .then_some(&rest[..offset]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn add_terminal_box(block: &term_maths::RenderedBlock) -> term_maths::RenderedBlock {
+    let mut rows = Vec::with_capacity(block.height() + 2);
+    let mut top = Vec::with_capacity(block.width() + 2);
+    top.push("┌".to_string());
+    top.extend(std::iter::repeat_n("─".to_string(), block.width()));
+    top.push("┐".to_string());
+    rows.push(top);
+
+    for row in block.cells() {
+        let mut boxed_row = Vec::with_capacity(row.len() + 2);
+        boxed_row.push("│".to_string());
+        boxed_row.extend(row.iter().cloned());
+        boxed_row.push("│".to_string());
+        rows.push(boxed_row);
+    }
+
+    let mut bottom = Vec::with_capacity(block.width() + 2);
+    bottom.push("└".to_string());
+    bottom.extend(std::iter::repeat_n("─".to_string(), block.width()));
+    bottom.push("┘".to_string());
+    rows.push(bottom);
+
+    term_maths::RenderedBlock::new(rows, block.baseline() + 1)
 }
 
 #[cfg(test)]

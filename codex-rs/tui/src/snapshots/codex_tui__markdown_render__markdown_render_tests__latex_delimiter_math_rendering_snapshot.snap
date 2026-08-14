@@ -1,6 +1,6 @@
 ---
 source: tui/src/markdown_render_tests.rs
-assertion_line: 1349
+assertion_line: 1357
 expression: "plain_lines(&text).join(\"\\n\")"
 ---
 Inline bias: b₁ ∈ ℝ, shape 1 × H.
@@ -13,3 +13,9 @@ Inline bias: b₁ ∈ ℝ, shape 1 × H.
  N   ⎣1⎦
 
 f(x) = ReLU(xW₁ + b₁)W₂ + b₂
+
+rank(W') ≤ min(rank(W₁),rank(W₂)) ≤ H
+
+┌─────────────────┐
+│能表示什么函数？ │
+└─────────────────┘
