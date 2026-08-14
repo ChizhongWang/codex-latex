@@ -1364,23 +1364,70 @@ f(x)=\operatorname{ReLU}(xW_1+b_1)W_2+b_2
 }
 
 #[test]
+fn function_space_math_rendering_snapshot() {
+    let md = r#"Set definition:
+
+\[
+L^2(P_X)
+=
+\left\{
+f:\mathbb R^D\to\mathbb R^C
+\;\middle|\;
+\mathbb E_{x\sim P_X}\|f(x)\|^2<\infty
+\right\}
+\]
+
+Inner product:
+
+\[
+\langle f,g\rangle
+=
+\mathbb E_{x\sim P_X}
+\left[f(x)^\top g(x)\right]
+\]
+
+Rank-constrained class:
+
+\[
+\mathcal F_{\text{deep linear}}
+=
+\left\{
+xW+b:\operatorname{rank}(W)\le H
+\right\}
+\]
+
+Barron representation:
+
+\[
+\int a(w,b)\operatorname{ReLU}(w^\top x+b)\,d\mu(w,b)
+\]
+
+Hierarchy:
+
+\[
+L^2(P_X)\supset\mathcal F_{\mathrm{ReLU}}\supset\mathcal A
+\]"#;
+    let text = render_markdown_text_with_width(md, Some(/*width*/ 100));
+    assert_snapshot!(plain_lines(&text).join("\n"));
+}
+
+#[test]
 fn multiline_inline_math_and_narrow_display_math_keep_source_fallback() {
     let md = "Inline $\\frac{a}{b}$\n\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$";
     let text = render_markdown_text_with_width(md, Some(/*width*/ 8));
     assert_eq!(
         plain_lines(&text),
         vec![
-            "Inline $",
+            "Inline",
             "\\frac{a}",
-            "{b}$",
+            "{b}",
             "",
-            "$$",
             "\\frac{-b",
             "\\pm",
             "\\sqrt{b^",
             "2 -",
             "4ac}}",
-            "{2a}$$",
+            "{2a}",
         ]
     );
 }

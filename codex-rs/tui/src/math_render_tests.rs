@@ -1,3 +1,4 @@
+use super::math_source_fallback;
 use super::normalize_for_terminal;
 use super::render_display_math;
 use super::render_inline_math;
@@ -93,5 +94,40 @@ fn rejects_unknown_empty_environment() {
     assert_eq!(
         render_display_math(r"\begin{unknown}x\end{unknown}", Some(80)),
         None
+    );
+}
+
+#[test]
+fn renders_standard_tex_escaped_set_delimiters() {
+    assert_eq!(
+        render_display_math(r"\mathcal A=\left\{f(x)=xW+b\right\}", Some(80)),
+        Some(vec!["𝒜 = {f(x) = xW + b}".to_string()])
+    );
+}
+
+#[test]
+fn renders_transpose_command_without_leaking_latex() {
+    assert_eq!(
+        render_display_math(r"f(x)^\top g(x)", Some(80)),
+        Some(vec!["    𝖳".to_string(), "f(x)  g(x)".to_string()])
+    );
+}
+
+#[test]
+fn renders_long_implication_with_terminal_supported_arrow() {
+    assert_eq!(
+        render_display_math(
+            r"\text{模型类越大}\quad\Longrightarrow\quad\text{可表达性越强}",
+            Some(80)
+        ),
+        Some(vec!["模型类越大 ⇒ 可表达性越强".to_string()])
+    );
+}
+
+#[test]
+fn source_fallback_is_delimiter_free_and_single_line() {
+    assert_eq!(
+        math_source_fallback("\n\\unsupported{x}\n+\n\\operatorname{rank}(W)\n"),
+        r"\unsupported{x} + \mathrm{rank}(W)"
     );
 }

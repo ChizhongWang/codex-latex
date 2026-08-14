@@ -27,3 +27,25 @@ fn normalizes_prose_around_code_without_touching_code() {
         "`\\(code\\)` and ${math}$\n\n```text\n\\[code\\]\n```"
     );
 }
+
+#[test]
+fn flattens_multiline_display_math_without_changing_offsets() {
+    let input = "before\n\n\\[\nL^2(P_X)\n=\n\\left\\{x\\right\\}\n\\]\n\nafter";
+    let normalized = normalize(input, Options::ENABLE_MATH);
+
+    assert_eq!(
+        normalized,
+        "before\n\n$$ L^2(P_X) = \\left\\{x\\right\\} $$\n\nafter"
+    );
+    assert_eq!(normalized.len(), input.len());
+}
+
+#[test]
+fn flattens_native_display_math_but_not_code() {
+    let input = "$$\nx\n=\ny\n$$\n\n`$$\ncode\n$$`\n\n```text\n$$\ncode\n$$\n```";
+
+    assert_eq!(
+        normalize(input, Options::ENABLE_MATH),
+        "$$ x = y $$\n\n`$$\ncode\n$$`\n\n```text\n$$\ncode\n$$\n```"
+    );
+}

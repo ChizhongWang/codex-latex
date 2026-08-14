@@ -1,8 +1,8 @@
 //! LaTeX math rendering for terminal transcript lines.
 //!
 //! Markdown parsing stays responsible for identifying math spans. This module only converts the
-//! TeX payload into bounded Unicode character art. Callers retain the original Markdown source so
-//! unsupported, empty, or oversized output can fall back without losing content.
+//! TeX payload into bounded Unicode character art and provides a compact source fallback for
+//! unsupported, empty, or oversized output.
 
 use std::borrow::Cow;
 use std::panic::AssertUnwindSafe;
@@ -28,6 +28,15 @@ pub(crate) fn render_display_math(latex: &str, max_width: Option<usize>) -> Opti
         .map(|line| line.trim_end().to_string())
         .collect::<Vec<_>>();
     (!lines.is_empty() && lines.iter().any(|line| !line.is_empty())).then_some(lines)
+}
+
+/// Returns a compact, delimiter-free source representation when Unicode rendering is unavailable.
+///
+/// Display math often arrives with one TeX token per source line. Emitting that source verbatim
+/// makes a single failed formula look like a large broken paragraph, so the fallback deliberately
+/// folds whitespace while retaining every non-presentation command for diagnosis and copy/paste.
+pub(crate) fn math_source_fallback(latex: &str) -> String {
+    normalize_for_terminal(latex).into_owned()
 }
 
 fn render_bounded(latex: &str, max_width: Option<usize>) -> Option<term_maths::RenderedBlock> {
@@ -60,6 +69,10 @@ fn render_bounded(latex: &str, max_width: Option<usize>) -> Option<term_maths::R
 /// fallback instead of being silently discarded.
 fn normalize_for_terminal(latex: &str) -> Cow<'_, str> {
     let commands = normalize_commands_for_terminal(latex);
+    collapse_source_whitespace(commands)
+}
+
+fn collapse_source_whitespace(commands: Cow<'_, str>) -> Cow<'_, str> {
     let mut normalized = String::with_capacity(commands.len());
     let mut pending_space = false;
 
@@ -89,10 +102,18 @@ fn normalize_commands_for_terminal(latex: &str) -> Cow<'_, str> {
     let mut cursor = 0;
 
     while cursor < bytes.len() {
-        if bytes[cursor] != b'\\'
-            || cursor + 1 >= bytes.len()
-            || !bytes[cursor + 1].is_ascii_alphabetic()
-        {
+        if bytes[cursor] != b'\\' {
+            cursor += 1;
+            continue;
+        }
+        if let Some((matched_len, replacement)) = terminal_sequence_replacement(&latex[cursor..]) {
+            normalized.push_str(&latex[copied_until..cursor]);
+            normalized.push_str(replacement);
+            cursor += matched_len;
+            copied_until = cursor;
+            continue;
+        }
+        if cursor + 1 >= bytes.len() || !bytes[cursor + 1].is_ascii_alphabetic() {
             cursor += 1;
             continue;
         }
@@ -109,6 +130,16 @@ fn normalize_commands_for_terminal(latex: &str) -> Cow<'_, str> {
             "boldsymbol" | "bm" => Some(r"\mathbf"),
             "textrm" | "textnormal" => Some(r"\mathrm"),
             "textbf" | "textit" | "texttt" | "emph" => Some(r"\text"),
+            "top" => Some(r"\mathsf{T}"),
+            "colon" => Some(":"),
+            "vert" | "lvert" | "rvert" => Some("|"),
+            "Vert" | "lVert" | "rVert" => Some("‖"),
+            "longrightarrow" => Some(r"\rightarrow"),
+            "Longrightarrow" => Some(r"\Rightarrow"),
+            "longleftarrow" => Some(r"\leftarrow"),
+            "Longleftarrow" => Some(r"\Leftarrow"),
+            "longleftrightarrow" => Some(r"\leftrightarrow"),
+            "Longleftrightarrow" => Some(r"\Leftrightarrow"),
             "boxed" => Some(""),
             "big" | "bigl" | "bigr" | "bigm" | "Big" | "Bigl" | "Bigr" | "Bigm" | "bigg"
             | "biggl" | "biggr" | "biggm" | "Bigg" | "Biggl" | "Biggr" | "Biggm" | "middle" => {
@@ -135,6 +166,32 @@ fn normalize_commands_for_terminal(latex: &str) -> Cow<'_, str> {
         normalized.push_str(&latex[copied_until..]);
         Cow::Owned(normalized)
     }
+}
+
+/// `rust-latex-parser`, used by `term-maths`, accepts a delimiter character directly after
+/// `\left`/`\right`, while standard TeX escapes braces and often names vertical bars. Translate
+/// only that narrow syntax gap before the normal command pass.
+fn terminal_sequence_replacement(input: &str) -> Option<(usize, &'static str)> {
+    const REPLACEMENTS: &[(&str, &str)] = &[
+        (r"\left\lVert", "\\left‖"),
+        (r"\right\rVert", "\\right‖"),
+        (r"\left\Vert", "\\left‖"),
+        (r"\right\Vert", "\\right‖"),
+        (r"\left\lvert", r"\left|"),
+        (r"\right\rvert", r"\right|"),
+        (r"\left\vert", r"\left|"),
+        (r"\right\vert", r"\right|"),
+        (r"\left\{", r"\left{"),
+        (r"\right\}", r"\right}"),
+        (r"\left\}", r"\left}"),
+        (r"\right\{", r"\right{"),
+    ];
+
+    REPLACEMENTS.iter().find_map(|(source, replacement)| {
+        input
+            .starts_with(source)
+            .then_some((source.len(), *replacement))
+    })
 }
 
 fn strip_outer_box(latex: &str) -> Option<&str> {

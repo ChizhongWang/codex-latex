@@ -1,0 +1,35 @@
+---
+source: tui/src/markdown_render_tests.rs
+assertion_line: 1411
+expression: "plain_lines(&text).join(\"\\n\")"
+---
+Set definition:
+
+         ⎧                               ⎫
+         ⎨    D    C                     ⎬
+L²(P ) = ⎨ f:ℝ  → ℝ  | 𝔼      |f(x)|² < ∞⎬
+    X    ⎩              x ∼ P            ⎭
+                             X
+
+Inner product:
+
+                ⎡    𝖳     ⎤
+⟨f,g⟩ = 𝔼       ⎣f(x)  g(x)⎦
+         x ∼ P
+              X
+
+Rank-constrained class:
+
+ℱ            = { xW + b:rank(W) ≤ H }
+ deep linear
+
+Barron representation:
+
+⌠            𝖳
+⎮a(w,b)ReLU(w  x + b) dμ(w,b)
+⌡
+
+Hierarchy:
+
+L²(P ) ⊃ ℱ     ⊃ 𝒜
+    X     ReLU

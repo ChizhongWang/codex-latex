@@ -486,12 +486,10 @@ where
             Event::Text(text) => self.text(text),
             Event::Code(code) => self.code(code),
             Event::InlineMath(latex) => {
-                let source = self.input.get(range).unwrap_or(&latex).to_string();
-                self.math(latex, source, MathKind::Inline);
+                self.math(latex, MathKind::Inline);
             }
             Event::DisplayMath(latex) => {
-                let source = self.input.get(range).unwrap_or(&latex).to_string();
-                self.math(latex, source, MathKind::Display);
+                self.math(latex, MathKind::Display);
             }
             Event::SoftBreak => self.soft_break(),
             Event::HardBreak => self.hard_break(),
@@ -747,7 +745,7 @@ where
         self.push_span(span);
     }
 
-    fn math(&mut self, latex: CowStr<'a>, source: String, kind: MathKind) {
+    fn math(&mut self, latex: CowStr<'a>, kind: MathKind) {
         if self.suppressing_local_link_label() {
             return;
         }
@@ -756,7 +754,7 @@ where
         match kind {
             MathKind::Inline => {
                 let rendered = crate::math_render::render_inline_math(&latex, self.wrap_width)
-                    .unwrap_or(source);
+                    .unwrap_or_else(|| crate::math_render::math_source_fallback(&latex));
                 if self.in_table_cell() {
                     self.push_span_to_table_cell(Span::styled(rendered, style));
                 } else {
@@ -767,10 +765,11 @@ where
                 let Some(rendered) =
                     crate::math_render::render_display_math(&latex, self.wrap_width)
                 else {
+                    let fallback = crate::math_render::math_source_fallback(&latex);
                     if self.in_table_cell() {
-                        self.push_span_to_table_cell(Span::styled(source, style));
+                        self.push_span_to_table_cell(Span::styled(fallback, style));
                     } else {
-                        self.push_span(Span::styled(source, style));
+                        self.push_span(Span::styled(fallback, style));
                     }
                     return;
                 };
