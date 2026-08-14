@@ -54,11 +54,35 @@ fn render_bounded(latex: &str, max_width: Option<usize>) -> Option<term_maths::R
     Some(block)
 }
 
-/// Rewrites common presentation-level LaTeX commands to equivalents understood by
+/// Rewrites common presentation-level LaTeX commands and folds source whitespace for
 /// `term-maths`. Command names are scanned as tokens so, for example, `\bm` never rewrites a
 /// longer command with the same prefix. Unsupported commands still reach the existing source
 /// fallback instead of being silently discarded.
 fn normalize_for_terminal(latex: &str) -> Cow<'_, str> {
+    let commands = normalize_commands_for_terminal(latex);
+    let mut normalized = String::with_capacity(commands.len());
+    let mut pending_space = false;
+
+    for character in commands.chars() {
+        if character.is_whitespace() {
+            pending_space = !normalized.is_empty();
+        } else {
+            if pending_space {
+                normalized.push(' ');
+                pending_space = false;
+            }
+            normalized.push(character);
+        }
+    }
+
+    if normalized == commands {
+        commands
+    } else {
+        Cow::Owned(normalized)
+    }
+}
+
+fn normalize_commands_for_terminal(latex: &str) -> Cow<'_, str> {
     let bytes = latex.as_bytes();
     let mut normalized = String::with_capacity(latex.len());
     let mut copied_until = 0;

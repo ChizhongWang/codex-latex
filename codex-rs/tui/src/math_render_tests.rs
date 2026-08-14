@@ -35,10 +35,16 @@ fn renders_operatorname_with_terminal_compatible_upright_text() {
 fn renders_sized_delimiters_in_rank_bound() {
     assert_eq!(
         render_display_math(
-            r"\operatorname{rank}(W') \leq \min\bigl(\operatorname{rank}(W_1), \operatorname{rank}(W_2)\bigr) \leq H",
+            r"\operatorname{rank}(W')
+\leq
+\min\bigl(
+\operatorname{rank}(W_1),
+\operatorname{rank}(W_2)
+\bigr)
+\leq H",
             Some(80)
         ),
-        Some(vec!["rank(W') ≤ min(rank(W₁), rank(W₂)) ≤ H".to_string()])
+        Some(vec!["rank(W') ≤ min( rank(W₁), rank(W₂) ) ≤ H".to_string()])
     );
 }
 
@@ -65,8 +71,13 @@ fn normalizes_common_unsupported_presentation_commands() {
         normalize_for_terminal(
             r"\displaystyle \operatorname*{argmax}\limits_x \dfrac{a}{b} + \boldsymbol{v} + \Bigl(x\Bigr)"
         ),
-        r" \mathrm{argmax}_x \frac{a}{b} + \mathbf{v} + (x)"
+        r"\mathrm{argmax}_x \frac{a}{b} + \mathbf{v} + (x)"
     );
+}
+
+#[test]
+fn collapses_source_line_breaks_without_joining_tokens() {
+    assert_eq!(normalize_for_terminal("x\n+\n y\t=  z"), "x + y = z");
 }
 
 #[test]

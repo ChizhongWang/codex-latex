@@ -1347,7 +1347,13 @@ f(x)=\operatorname{ReLU}(xW_1+b_1)W_2+b_2
 \]
 
 \[
-\operatorname{rank}(W')\leq\min\bigl(\operatorname{rank}(W_1),\operatorname{rank}(W_2)\bigr)\leq H
+\operatorname{rank}(W')
+\leq
+\min\bigl(
+\operatorname{rank}(W_1),
+\operatorname{rank}(W_2)
+\bigr)
+\leq H
 \]
 
 \[
