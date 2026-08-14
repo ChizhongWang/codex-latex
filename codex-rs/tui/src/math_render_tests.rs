@@ -1,3 +1,4 @@
+use super::normalize_for_terminal;
 use super::render_display_math;
 use super::render_inline_math;
 
@@ -19,6 +20,29 @@ fn renders_display_fraction() {
     assert_eq!(
         render_display_math(r"\frac{a}{b}", Some(80)),
         Some(vec![" a".to_string(), "───".to_string(), " b".to_string()])
+    );
+}
+
+#[test]
+fn renders_operatorname_with_terminal_compatible_upright_text() {
+    assert_eq!(
+        render_display_math(r"f(x)=\operatorname{ReLU}(xW_1+b_1)W_2+b_2", Some(80)),
+        Some(vec!["f(x) = ReLU(xW₁ + b₁)W₂ + b₂".to_string()])
+    );
+}
+
+#[test]
+fn normalizes_only_complete_latex_command_names() {
+    assert_eq!(render_display_math(r"\bmatrix", Some(80)), None);
+}
+
+#[test]
+fn normalizes_common_unsupported_presentation_commands() {
+    assert_eq!(
+        normalize_for_terminal(
+            r"\displaystyle \operatorname*{argmax}\limits_x \dfrac{a}{b} + \boldsymbol{v}"
+        ),
+        r" \mathrm{argmax}_x \frac{a}{b} + \mathbf{v}"
     );
 }
 

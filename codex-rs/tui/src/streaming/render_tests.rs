@@ -165,6 +165,22 @@ fn streamed_math_matches_full_render_as_delimiters_arrive() {
 }
 
 #[test]
+fn streamed_latex_delimiter_math_matches_full_render_as_delimiters_arrive() {
+    let chunks = [
+        "Bias \\(b_1 ",
+        "\\in \\mathbb{R}\\), shape \\(1\\times H\\).\n\n",
+        "\\[\n(N\\times D)",
+        "(D\\times H)=N\\times H\n",
+        "\\]\n",
+    ];
+    let (_, render) = assert_rich_stream_matches_full_render(&chunks, Some(80));
+    assert_eq!(
+        lines_to_plain_strings(&render.lines),
+        vec!["Bias b₁ ∈ ℝ, shape 1 × H.", "", "(N × D)(D × H) = N × H"]
+    );
+}
+
+#[test]
 fn incremental_raw_render_preserves_blank_lines() {
     let cwd = test_cwd();
     let width = Some(80);

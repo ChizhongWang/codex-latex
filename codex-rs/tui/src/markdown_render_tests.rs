@@ -1331,6 +1331,25 @@ $$\begin{bmatrix}1 & 2 \\ 3 & 4\end{bmatrix}$$"#;
 }
 
 #[test]
+fn latex_delimiter_math_rendering_snapshot() {
+    let md = r#"Inline bias: \(b_1 \in \mathbb{R}\), shape \(1\times H\).
+
+\[
+(N\times D)(D\times H)=N\times H
+\]
+
+\[
+\mathbf{1}_N=\begin{bmatrix}1\\1\\\vdots\\1\end{bmatrix}\in\mathbb{R}^{N\times1}
+\]
+
+\[
+f(x)=\operatorname{ReLU}(xW_1+b_1)W_2+b_2
+\]"#;
+    let text = render_markdown_text_with_width(md, Some(/*width*/ 80));
+    assert_snapshot!(plain_lines(&text).join("\n"));
+}
+
+#[test]
 fn multiline_inline_math_and_narrow_display_math_keep_source_fallback() {
     let md = "Inline $\\frac{a}{b}$\n\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$";
     let text = render_markdown_text_with_width(md, Some(/*width*/ 8));
@@ -1354,11 +1373,16 @@ fn multiline_inline_math_and_narrow_display_math_keep_source_fallback() {
 
 #[test]
 fn code_spans_and_fences_keep_math_delimiters_literal() {
-    let md = "`$x^2$`\n\n```text\n$$\\frac{a}{b}$$\n```";
+    let md = "`$x^2$` and `\\(y^2\\)`\n\n```text\n$$\\frac{a}{b}$$\n\\[z^2\\]\n```";
     let text = render_markdown_text(md);
     assert_eq!(
         plain_lines(&text),
-        vec!["$x^2$", "", "$$\\frac{a}{b}$$"]
+        vec![
+            "$x^2$ and \\(y^2\\)",
+            "",
+            "$$\\frac{a}{b}$$",
+            "\\[z^2\\]"
+        ]
     );
 }
 

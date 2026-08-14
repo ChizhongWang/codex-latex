@@ -1,0 +1,15 @@
+---
+source: tui/src/markdown_render_tests.rs
+assertion_line: 1349
+expression: "plain_lines(&text).join(\"\\n\")"
+---
+Inline bias: b₁ ∈ ℝ, shape 1 × H.
+
+(N × D)(D × H) = N × H
+
+     ⎡1⎤
+     ⎢1⎥    N × 1
+𝟏  = ⎢⋮⎥ ∈ ℝ
+ N   ⎣1⎦
+
+f(x) = ReLU(xW₁ + b₁)W₂ + b₂

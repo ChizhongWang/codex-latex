@@ -10,6 +10,7 @@ use super::Options;
 use super::Parser;
 use super::Tag;
 use super::Writer;
+use super::latex_delimiters;
 use super::never_hide_link_destination;
 use std::ops::Range;
 use std::path::Path;
@@ -39,7 +40,8 @@ pub(crate) fn render_streaming_markdown_lines_with_width_and_cwd(
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TABLES);
     options.insert(Options::ENABLE_MATH);
-    let parser = Parser::new_ext(input, options);
+    let normalized = latex_delimiters::normalize(input, options);
+    let parser = Parser::new_ext(&normalized, options);
     let has_reference_link_definition = parser.reference_definitions().iter().next().is_some();
     let parser = TopLevelBlockTracker {
         iter: DecodedTextMerge::new(parser.into_offset_iter()),

@@ -76,6 +76,7 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 use url::Url;
 
+mod latex_delimiters;
 mod streaming;
 mod table_key_value;
 
@@ -351,7 +352,8 @@ pub(crate) fn render_markdown_lines_with_width_cwd_and_hidden_link_destinations(
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TABLES);
     options.insert(Options::ENABLE_MATH);
-    let parser = DecodedTextMerge::new(Parser::new_ext(input, options).into_offset_iter());
+    let normalized = latex_delimiters::normalize(input, options);
+    let parser = DecodedTextMerge::new(Parser::new_ext(&normalized, options).into_offset_iter());
     let mut w = Writer::new(input, parser, width, cwd, is_hidden_link_destination);
     w.run();
     w.text
